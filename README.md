@@ -1,6 +1,38 @@
 # ChatGPT Bot for Telegram
 
-![](/docs/dialog.png)
+## 使用
+
+这是一个 telegram ChatGPT 机器人，它会调用 ChatGPT API 并使用 telegram 与您交互。
+
+* 私聊调用 chatgpt api 回答问题
+* 发送语音先将语音转文字再回答
+* `/dalle 文字描述`：将文字描述转为图片
+* 在群组中@机器人它也会回复
+
+您需要准备
+* telegram bot 一个以及它的 api token
+* ChatGPT api key
+* 您自己的 telegram userid (可以找一些公开机器人或者对这个机器人使用 `/getid` 命令来获得)
+
+并将它们填入 `config.json` 以使用机器人
+
+## 注意
+
+* tg 机器人的创建请找 [@BotFather](https://t.me/BotFather) 自助进行，事后将对应的 API keys 填入 `config.json`
+* tg 机器人默认开启隐私模式，也就是不会收到群中的消息，为了让它回复群组中的问题，您可以
+  1. 将 bot 设置为管理员，或者
+  2. 找 BotFather，Bot Settings --> Group Privacy --> Turn Off
+
+## 相对于原版的更新
+
+* 超长的文字以文件形式发送（而不是失败）
+* 增加 Markdown 支持
+* 群组中的消息无论是否是认证用户都会回答
+* 增加了 /help、日志和 error 记录
+* 语音转文字之后先打印结果再试图回复，这样显得反应快一些
+* 改了一些小 bug
+
+<!--![](/docs/dialog.png)-->
 
 ## News
 
