@@ -71,7 +71,7 @@ class OpenAIParser:
         return transcript["text"]
 
     def image_generation(self, userid, prompt):
-        response = openai.Image.create(prompt = prompt, n=1, size = "512x512", user = userid)
+        response = openai.Image.create(prompt = prompt, n=1, size = "1024x1024", user = userid)
         image_url = response["data"][0]["url"]
         # self.update_image_generation_usage(userid)
         # for debug use
