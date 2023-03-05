@@ -38,33 +38,9 @@ class TelegramMessageParser:
         
         # init bot
         self.bot = ApplicationBuilder().token(self.config_dict["telegram_bot_token"]).build()
-        # add handlers
-        self.add_handlers()
 
         # init MessageManager
         self.message_manager = MessageManager()
-
-    def run_polling(self):
-        # start bot
-        self.bot.run_polling()
-        log("started")
-
-    def add_handlers(self):
-        self.bot.add_handler(CommandHandler("start", self.start))
-        self.bot.add_handler(CommandHandler("help", self.help))
-        self.bot.add_handler(CommandHandler("clear", self.clear_context))
-        self.bot.add_handler(CommandHandler("getid", self.get_user_id))
-
-        if self.config_dict["enable_voice"]:
-            self.bot.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.VOICE, self.chat_voice))
-
-        if self.config_dict["enable_dalle"]:
-            self.bot.add_handler(CommandHandler("dalle", self.image_generation))
-
-        self.bot.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.PHOTO | filters.AUDIO | filters.VIDEO), self.chat_file))
-        self.bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.chat_text))
-        self.bot.add_handler(MessageHandler(filters.COMMAND, self.unknown))
-        self.bot.add_error_handler(self.error_handler)
 
     # chat messages
     async def chat_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -95,7 +71,10 @@ class TelegramMessageParser:
         # send message to openai
         response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), message)
         # reply response to user
-        await update.message.reply_text(response,parse_mode="Markdown")
+        if len(response.encode())<4000:
+            await update.message.reply_text(response,parse_mode="Markdown")
+        else:
+            await update.message.reply_document(response.encode(), filename="%s.txt"%(message[0:10]))
 
     # voice message in private chat, speech to text with Whisper API and process with ChatGPT
     async def chat_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -121,7 +100,6 @@ class TelegramMessageParser:
             log("downloaded")
 
             file_size = os.path.getsize(file_id + ".ogg") / 1000
-            # # if < 200kB, convert to wav and send to openai
             # if file_size > 50:
             #     await update.message.reply_text("Sorry, the voice message is too long.")
             #     return
@@ -175,12 +153,6 @@ class TelegramMessageParser:
                 chat_id=update.effective_chat.id,
                 action="upload_photo"
             )
-            # send file to user
-            # await context.bot.send_document(
-            #     chat_id = update.effective_chat.id,
-            #     document = image_url,
-            #     caption = prompt
-            # )
             # send image to user
             await context.bot.send_photo(
                 chat_id = update.effective_chat.id,
@@ -222,7 +194,7 @@ class TelegramMessageParser:
     async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(helpmsg)
 
-    def error_handler(self,update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def error_handler(self,update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         log("Exception: %s"%(context.error,),l=3)
 
     # clear context command
@@ -255,6 +227,31 @@ class TelegramMessageParser:
                 return True
             else:
                 return False
+
+    def add_handlers(self):
+        self.bot.add_handler(CommandHandler("start", self.start))
+        self.bot.add_handler(CommandHandler("help", self.help))
+        self.bot.add_handler(CommandHandler("clear", self.clear_context))
+        self.bot.add_handler(CommandHandler("getid", self.get_user_id))
+
+        if self.config_dict["enable_voice"]:
+            self.bot.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.VOICE, self.chat_voice))
+
+        if self.config_dict["enable_dalle"]:
+            self.bot.add_handler(CommandHandler("dalle", self.image_generation))
+
+        self.bot.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.PHOTO | filters.AUDIO | filters.VIDEO), self.chat_file))
+        self.bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.chat_text))
+        self.bot.add_handler(MessageHandler(filters.COMMAND, self.unknown))
+        self.bot.add_error_handler(self.error_handler)
+
+    def run_polling(self):
+        # add handlers
+        self.add_handlers()
+
+        # start bot
+        self.bot.run_polling()
+        log("started")
 
 if __name__ == "__main__":
     TelegramMessageParser().run_polling()
