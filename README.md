@@ -2,7 +2,7 @@
 
 ## 使用
 
-这是一个 telegram ChatGPT 机器人，它会调用 ChatGPT API 并使用 telegram 与您交互。
+这是一个 Telegram ChatGPT 机器人，它会调用 ChatGPT API 并使用 Telegram 与您交互。
 
 * 私聊调用 chatgpt api 回答问题
 * 发送语音先将语音转文字再回答
@@ -10,9 +10,9 @@
 * 在群组中@机器人它也会回复
 
 您需要准备
-* telegram bot 一个以及它的 api token
+* Telegram bot 一个以及它的 api token
 * ChatGPT api key
-* 您自己的 telegram userid (可以找一些公开机器人或者对这个机器人使用 `/getid` 命令来获得)
+* 您自己的 Telegram userid (可以找一些公开机器人或者对这个机器人使用 `/getid` 命令来获得)
 
 并将它们填入 `config.json` 以使用机器人
 
@@ -30,7 +30,8 @@
 * 群组中的消息无论是否是认证用户都会回答
 * 增加了 /help、日志和 error 记录
 * 语音转文字之后先打印结果再试图回复，这样显得反应快一些
-* 改了一些小 bug
+* 改了一些小 bug、catch 住了一些 API 调用时的报错
+* 将 Windows line ending 改为了 Unix 的，并删除了行尾多余的空白字符
 
 <!--![](/docs/dialog.png)-->
 
