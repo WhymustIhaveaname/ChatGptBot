@@ -18,8 +18,8 @@ helpmsg = """发送语音可以转文字并回复
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import json, os
-from openai_parser import log
 from message_manager import MessageManager
+from user_context import log
 
 with open("config.json") as f:
     config_dict = json.load(f)

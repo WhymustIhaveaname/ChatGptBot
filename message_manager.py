@@ -2,52 +2,53 @@ import time
 import datetime
 import os
 import json
+import sqlite3
 import openai
-from user_context import UserContext
+from user_context import UserContext,log
 from openai_parser import OpenAIParser
 
 class MessageManager:
-
-    userDict = {}
-    openai_parser = None
-    config_dict = {}
-    user_image_generation_usage_dict = {}
-    user_chat_usage_dict = {}
-    # Fixed by @Flynn
-    usage_dict = {}
-
     def __init__(self):
         self.openai_parser = OpenAIParser()
-        # load config
+
+        self.userDict = {} #记录用户对话 context 的字典，核心功能数据
         with open("config.json") as f:
-            self.config_dict = json.load(f)
+            config_dict = json.load(f)
+        self.img_limit   = config_dict["image_generation_limit_per_day"]
+        self.super_users = config_dict["super_users"]
 
-        (image_usage_file_name, now) = self.__get_usage_filename_and_key("image")
-        if not os.path.exists("./usage"):
-            os.makedirs("./usage")
-        if os.path.exists("./usage/" + image_usage_file_name):
-            with open("./usage/" + image_usage_file_name) as f:
-                self.user_image_generation_usage_dict = json.load(f)
-        else:
-            self.user_image_generation_usage_dict = {}
+        self.__init_usage_table("chat")
+        self.__init_usage_table("dalle")
 
-        # Fixed by @Flynn
-        if now not in self.user_image_generation_usage_dict:
-            self.user_image_generation_usage_dict[now] = {}
+        # #本意是记录用户使用，但似乎未完成
+        # self.user_chat_usage_dict = {}
+        # (image_usage_file_name, now) = self.__get_usage_filename_and_key("image")
+        # if not os.path.exists("./usage"):
+        #     os.makedirs("./usage")
+        # if os.path.exists("./usage/" + image_usage_file_name):
+        #     with open("./usage/" + image_usage_file_name) as f:
+        #         self.user_image_generation_usage_dict = json.load(f)
+        # else:
+        #     self.user_image_generation_usage_dict = {}
+
+        # # Fixed by @Flynn
+        # if now not in self.user_image_generation_usage_dict:
+        #     self.user_image_generation_usage_dict[now] = {}
 
     def get_response(self, id, user, message):
-
         t = time.time()
-
         if id not in self.userDict:
-            # new user
             self.userDict[id] = UserContext(t, message)
-        else:
-            self.userDict[id].update(t, message, "user")
 
-        # send user info for statistics 
-        answer = self.__sendMessage(user, self.userDict[id].messageList)
+        self.userDict[id].update(t, message, "user")
+        answer = self.openai_parser.get_response(user, self.userDict[id].messageList)
         self.userDict[id].update(t, answer, "assistant")
+
+        try:
+            self.__update_usage(user,len(answer),1,"chat")
+        except:
+            log("write usage count failed",l=3)
+
         return answer
 
     def clear_context(self, id):
@@ -57,22 +58,16 @@ class MessageManager:
             log(e,l=3)
 
     def get_generated_image_url(self, user, prompt):
-
-        # Temporary fix by @Flynn, will be fixed in the next version
-        with open("config.json") as f:
-            config_dict = json.load(f)
-
-        used_num = self.__check_image_generation_limit(user)
-        if user in config_dict["super_users"]:
+        tokenum,usednum = self.__check_usage(user,"dalle")
+        if user in self.super_users:
             caption = "Hey boss, it's on your account. 💰"
-        elif used_num < config_dict["image_generation_limit_per_day"]:
-            used_num += 1
-            self.__update_usage_info(user, used_num, "image")
-            caption = "You have used %d/%d times"%(used_num,config_dict["image_generation_limit_per_day"])
+        elif usednum < self.img_limit:
+            caption = "You have used %d/%d times"%(usednum+1,self.img_limit)
         else:
             return (None, "You have reached the limit.")
 
         try:
+            self.__update_usage(user,len(prompt),1,"dalle")
             url = self.openai_parser.image_generation(user, prompt)
         except openai.error.InvalidRequestError as e:
             # "Your request was rejected as a result of our safety system. Your prompt may contain text that is not allowed by our safety system."
@@ -84,53 +79,95 @@ class MessageManager:
         try:
             return self.openai_parser.speech_to_text(user, audio_file)
         except Exception as e:
-            print(e)
+            log(e,l=3)
             return ""
 
-    def __get_usage_filename_and_key(self, chatORimage):
-        if chatORimage == "chat":
-            filename = "_char_usage.json"
-        elif chatORimage == "image":
-            filename = "_image_generation_usage.json"
-        return (datetime.datetime.now().strftime("%Y%m") + filename,
-                datetime.datetime.now().strftime("%Y-%m-%d"))
-
-    def __sendMessage(self, user, messageList):
-        ans = self.openai_parser.get_response(user, messageList)
-        return ans
-
-    def __check_image_generation_limit(self, user):
-        (_, now) = self.__get_usage_filename_and_key("image")
-        if now not in self.user_image_generation_usage_dict:
-            self.__update_dict("image")
-        if user not in self.user_image_generation_usage_dict[now]:
-            used_num = 0
+    @staticmethod
+    def __check_usage(user, tbname):
+        con = sqlite3.connect("usage.db")
+        cur = con.cursor()
+        cur.execute("SELECT TOKENUM,USEDNUM from %s where userid=? and day=?;"%(tbname),(user,datetime.date.today()))
+        ans = cur.fetchone()
+        con.close()
+        if ans is None:
+            return 0,0
         else:
-            used_num = self.user_image_generation_usage_dict[now][user]
-        return used_num
+            return ans
 
-    def __update_dict(self, chatORimage):
-        (filename, now) = self.__get_usage_filename_and_key(chatORimage)
-        if not os.path.exists("./usage/" + filename):
-            if chatORimage == "image":
-                self.user_image_generation_usage_dict = {}
-            elif chatORimage == "chat":
-                self.user_chat_usage_dict = {}
-            return
-        if chatORimage == "image" and now not in self.user_image_generation_usage_dict:
-            self.user_image_generation_usage_dict[now] = {}
-        elif chatORimage == "chat" and now not in self.user_chat_usage_dict:
-            self.user_chat_usage_dict[now] = {}
+    @staticmethod
+    def __update_usage(user, tokenum, usednum, tbname):
+        con = sqlite3.connect("usage.db")
+        cur = con.cursor()
+        cur.execute("SELECT TOKENUM,USEDNUM from %s where userid=? and day=?;"%(tbname),(user,datetime.date.today()))
+        ans = cur.fetchone()
+        if ans is None:
+            data = (datetime.date.today(),user,tokenum,usednum)
+            cur.execute("INSERT INTO %s VALUES (?,?,?,?);"%(tbname),data)
+        else:
+            data = (ans[0]+tokenum,ans[1]+usednum,datetime.date.today(),user)
+            cur.execute("UPDATE %s SET TOKENUM=?, USEDNUM=? WHERE DAY=? AND USERID=?"%(tbname),data)
+        con.commit()
+        con.close()
 
-    def __update_usage_info(self, user, used_num, chatORimage):
-        (filename, now) = self.__get_usage_filename_and_key(chatORimage)
-        if now not in self.user_image_generation_usage_dict:
-            self.__update_dict(chatORimage)
-        if chatORimage == "image":
-            self.user_image_generation_usage_dict[now][user] = used_num
-            with open("./usage/" + filename, "w") as f:
-                json.dump(self.user_image_generation_usage_dict, f)
-        elif chatORimage == "chat":
-            self.user_chat_usage_dict[now][user] = used_num
-            # with open("./usage/" + filename, "w") as f:
-            #     json.dump(self.user_chat_usage_dict, f)
+    @staticmethod
+    def __init_usage_table(tbname):
+        con = sqlite3.connect("usage.db")
+        cur = con.cursor()
+        cur.execute("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='%s'"%(tbname))
+        if cur.fetchone()[0]==1:
+            log("table %s exists"%(tbname))
+        else:
+            cur.execute(""" CREATE TABLE %s(
+                            DAY     TIMESTAMP NOT NULL,
+                            USERID  INT NOT NULL,
+                            TOKENUM INT NOT NULL,
+                            USEDNUM INT NOT NULL,
+                            PRIMARY KEY(DAY,USERID)
+                        );"""%(tbname))
+            con.commit()
+            con.close()
+            log("created table %s"%(tbname))
+
+    # def __check_image_generation_limit(self, user):
+    #     (_, now) = self.__get_usage_filename_and_key("image")
+    #     if now not in self.user_image_generation_usage_dict:
+    #         self.__update_dict("image")
+    #     if user not in self.user_image_generation_usage_dict[now]:
+    #         used_num = 0
+    #     else:
+    #         used_num = self.user_image_generation_usage_dict[now][user]
+    #     return used_num
+
+    # def __get_usage_filename_and_key(self, chatORimage):
+    #     if chatORimage == "chat":
+    #         filename = "_char_usage.json"
+    #     elif chatORimage == "image":
+    #         filename = "_image_generation_usage.json"
+    #     return (datetime.datetime.now().strftime("%Y%m") + filename,
+    #             datetime.datetime.now().strftime("%Y-%m-%d"))
+
+    # def __update_dict(self, chatORimage):
+    #     (filename, now) = self.__get_usage_filename_and_key(chatORimage)
+    #     if not os.path.exists("./usage/" + filename):
+    #         if chatORimage == "image":
+    #             self.user_image_generation_usage_dict = {}
+    #         elif chatORimage == "chat":
+    #             self.user_chat_usage_dict = {}
+    #         return
+    #     if chatORimage == "image" and now not in self.user_image_generation_usage_dict:
+    #         self.user_image_generation_usage_dict[now] = {}
+    #     elif chatORimage == "chat" and now not in self.user_chat_usage_dict:
+    #         self.user_chat_usage_dict[now] = {}
+
+    # def __update_usage_info(self, user, used_num, chatORimage):
+    #     (filename, now) = self.__get_usage_filename_and_key(chatORimage)
+    #     if now not in self.user_image_generation_usage_dict:
+    #         self.__update_dict(chatORimage)
+    #     if chatORimage == "image":
+    #         self.user_image_generation_usage_dict[now][user] = used_num
+    #         with open("./usage/" + filename, "w") as f:
+    #             json.dump(self.user_image_generation_usage_dict, f)
+    #     elif chatORimage == "chat":
+    #         self.user_chat_usage_dict[now][user] = used_num
+    #         # with open("./usage/" + filename, "w") as f:
+    #         #     json.dump(self.user_chat_usage_dict, f)

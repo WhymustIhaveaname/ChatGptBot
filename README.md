@@ -29,9 +29,18 @@
 * 增加 Markdown 支持
 * 群组中的消息无论是否是认证用户都会回答
 * 增加了 /help、日志和 error 记录
+* 将使用数统计从混乱的字典记录切换到了 sqlite
 * 语音转文字之后先打印结果再试图回复，这样显得反应快一些
 * 改了一些小 bug、catch 住了一些 API 调用时的报错
 * 将 Windows line ending 改为了 Unix 的，并删除了行尾多余的空白字符
+
+## 文件依赖关系
+
+按自顶向下的顺序
+* `telegram_message_parser.py` 负责和 Telegram 的接口，依赖 `message_manager.py`
+* `message_manager.py` 负责语境维护，依赖 `user_context.py` 和 `openai_parser.py`
+* `user_context.py` 负责语境维护
+* `openai_parser.py` 负责 OpenAI 接口
 
 <!--![](/docs/dialog.png)-->
 
