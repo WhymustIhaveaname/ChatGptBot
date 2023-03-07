@@ -111,11 +111,15 @@ class TelegramMessageParser:
 
     # image_generation command, aka DALLE
     async def image_generation(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not self.check_user_allowed(str(update.effective_user.id)):
+            await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
+            return
+
         # remove dalle command from message
         message = update.effective_message.text.replace("/dalle", "")
 
         # send prompt to openai image generation and get image url
-        image_url, prompt = self.message_manager.get_generated_image_url(str(update.effective_chat.id), message)
+        image_url, prompt = self.message_manager.get_generated_image_url(str(update.effective_user.id), message)
 
         # if exceeds use limit, send message instead
         if image_url is None:
