@@ -15,6 +15,8 @@ __status__ = Dev
 helpmsg = """发送语音可以转文字并回复
 /dalle 描述：将描述转为图片"""
 
+dosmsg = "Sorry, you are not allowed to use this bot. Please contact @fuckkwechat for more information."
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import json, os
@@ -23,15 +25,12 @@ from user_context import log
 
 with open("config.json") as f:
     config_dict = json.load(f)
+
 if config_dict["enable_voice"]:
     import subprocess
 
 class TelegramMessageParser:
-
-    config_dict = {}
-
     def __init__(self):
-
         # load config
         with open("config.json") as f:
             self.config_dict = json.load(f)
@@ -44,32 +43,21 @@ class TelegramMessageParser:
 
     # chat messages
     async def chat_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # get message
         message = update.effective_message.text
         groupmsg = update.effective_chat.type == "group" or update.effective_chat.type == "supergroup"
-        # group chat without @username
-        if groupmsg:
-            if not ("@" + context.bot.username) in message:
-                return
-            else:
-                # remove @username
-                message = message.replace("@" + context.bot.username, "")
-
-        # check if user is allowed to use this bot
-        if not groupmsg and not self.check_user_allowed(str(update.effective_user.id)):
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Sorry, you are not allowed to use this bot. Contact the bot owner for more information."
-            )
+        if groupmsg and not ("@" + context.bot.username) in message:
+            return
+        elif not self.check_user_allowed(str(update.effective_chat.id)):
+            await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
             return
 
+        if groupmsg:
+            message = message.replace("@" + context.bot.username, "")
+
         # sending typing action
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id,
-            action="typing"
-        )
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
         # send message to openai
-        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), message)
+        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_chat.id), message)
         # reply response to user
         if len(response.encode())<4000:
             await update.message.reply_text(response,parse_mode="Markdown")
@@ -79,11 +67,8 @@ class TelegramMessageParser:
     # voice message in private chat, speech to text with Whisper API and process with ChatGPT
     async def chat_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         # check if user is allowed to use this bot
-        if not self.check_user_allowed(str(update.effective_user.id)):
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Sorry, you are not allowed to use this bot. Contact the bot owner for more information."
-            )
+        if not self.check_user_allowed(str(update.effective_chat.id)):
+            await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
             return
 
         # sending typing action
@@ -93,11 +78,9 @@ class TelegramMessageParser:
         )
         
         try:
-            log("downloading voice")
             file_id = update.effective_message.voice.file_id
             new_file = await context.bot.get_file(file_id)
             await new_file.download_to_drive(file_id + ".ogg")
-            log("downloaded")
 
             file_size = os.path.getsize(file_id + ".ogg") / 1000
             # if file_size > 50:
@@ -105,10 +88,8 @@ class TelegramMessageParser:
             #     return
 
             subprocess.call(['ffmpeg', '-i', file_id + '.ogg', file_id + '.wav'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            log("transcripting")
             with open(file_id + ".wav", "rb") as audio_file:
-                transcript = self.message_manager.get_transcript(str(update.effective_user.id), audio_file)
-            log("transcripted")
+                transcript = self.message_manager.get_transcript(str(update.effective_chat.id), audio_file)
             os.remove(file_id + ".ogg")
             os.remove(file_id + ".wav")
             
@@ -125,7 +106,7 @@ class TelegramMessageParser:
             chat_id=update.effective_chat.id,
             action="typing"
         )
-        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), transcript)
+        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_chat.id), transcript)
         await update.message.reply_text(response)
 
     # image_generation command, aka DALLE
@@ -134,7 +115,7 @@ class TelegramMessageParser:
         message = update.effective_message.text.replace("/dalle", "")
 
         # send prompt to openai image generation and get image url
-        image_url, prompt = self.message_manager.get_generated_image_url(str(update.effective_user.id), message)
+        image_url, prompt = self.message_manager.get_generated_image_url(str(update.effective_chat.id), message)
 
         # if exceeds use limit, send message instead
         if image_url is None:
@@ -172,11 +153,8 @@ class TelegramMessageParser:
         if (not message is None) and "@" + context.bot.username in message:
             message = message.replace("@" + context.bot.username, "")
         # check if user is allowed to use this bot
-        if not self.check_user_allowed(str(update.effective_user.id)):
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Sorry, you are not allowed to use this bot. Contact the bot owner for more information."
-            )
+        if not self.check_user_allowed(str(update.effective_chat.id)):
+            await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
             return
         await context.bot.send_message(
                 chat_id=update.effective_chat.id,
@@ -209,7 +187,8 @@ class TelegramMessageParser:
     async def get_user_id(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=str(update.effective_user.id)
+            text="```\nuser id: %d\nchat id: %d```"%(update.effective_user.id,update.effective_chat.id),
+            parse_mode="Markdown"
         )
     
     # unknown command
