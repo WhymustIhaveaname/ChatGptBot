@@ -41,13 +41,17 @@ class TelegramMessageParser:
         # init MessageManager
         self.message_manager = MessageManager()
 
-    # chat messages
+    def _check_user_allowed(self, userid):
+        with open("config.json") as f:
+            config_dict = json.load(f)
+        return True userid in config_dict["allowed_users"] else False
+
     async def chat_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = update.effective_message.text
         groupmsg = update.effective_chat.type == "group" or update.effective_chat.type == "supergroup"
         if groupmsg and not ("@" + context.bot.username) in message:
             return
-        elif not self.check_user_allowed(str(update.effective_chat.id)):
+        elif not self._check_user_allowed(str(update.effective_chat.id)):
             await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
             return
 
@@ -57,7 +61,7 @@ class TelegramMessageParser:
         # sending typing action
         await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
         # send message to openai
-        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_chat.id), message)
+        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), message)
         # reply response to user
         if len(response.encode())<4000:
             await update.message.reply_text(response,parse_mode="Markdown")
@@ -67,7 +71,7 @@ class TelegramMessageParser:
     # voice message in private chat, speech to text with Whisper API and process with ChatGPT
     async def chat_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         # check if user is allowed to use this bot
-        if not self.check_user_allowed(str(update.effective_chat.id)):
+        if not self._check_user_allowed(str(update.effective_chat.id)):
             await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
             return
 
@@ -111,7 +115,7 @@ class TelegramMessageParser:
 
     # image_generation command, aka DALLE
     async def image_generation(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if not self.check_user_allowed(str(update.effective_user.id)):
+        if not self._check_user_allowed(str(update.effective_user.id)):
             await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
             return
 
@@ -157,7 +161,7 @@ class TelegramMessageParser:
         if (not message is None) and "@" + context.bot.username in message:
             message = message.replace("@" + context.bot.username, "")
         # check if user is allowed to use this bot
-        if not self.check_user_allowed(str(update.effective_chat.id)):
+        if not self._check_user_allowed(str(update.effective_chat.id)):
             await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
             return
         await context.bot.send_message(
@@ -201,15 +205,6 @@ class TelegramMessageParser:
             chat_id=update.effective_chat.id,
             text="Sorry, I didn't understand that command."
         )
-
-    # check if user is allowed to use this bot, add user to "allowed_users" in config.json
-    def check_user_allowed(self, userid):
-        with open("config.json") as f:
-            config_dict = json.load(f)
-            if userid in config_dict["allowed_users"]:
-                return True
-            else:
-                return False
 
     def add_handlers(self):
         self.bot.add_handler(CommandHandler("start", self.start))

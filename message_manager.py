@@ -35,14 +35,17 @@ class MessageManager:
         # if now not in self.user_image_generation_usage_dict:
         #     self.user_image_generation_usage_dict[now] = {}
 
-    def get_response(self, id, user, message):
+    def get_response(self, chatid, user, message):
+        """
+            user 仅用于记录使用情况
+        """
         t = time.time()
-        if id not in self.userDict:
-            self.userDict[id] = UserContext(t, message)
+        if chatid not in self.userDict:
+            self.userDict[chatid] = UserContext(t, message)
 
-        self.userDict[id].update(t, message, "user")
-        answer = self.openai_parser.get_response(user, self.userDict[id].messageList)
-        self.userDict[id].update(t, answer, "assistant")
+        self.userDict[chatid].update(t, message, "user")
+        answer = self.openai_parser.get_response(chatid, self.userDict[chatid].messageList)
+        self.userDict[chatid].update(t, answer, "assistant")
 
         try:
             self.__update_usage(user,len(answer),1,"chat")
@@ -51,9 +54,9 @@ class MessageManager:
 
         return answer
 
-    def clear_context(self, id):
+    def clear_context(self, chatid):
         try:
-            self.userDict[id].clear_context(time.time())
+            self.userDict[chatid].clear_context(time.time())
         except Exception as e:
             log(e,l=3)
 
