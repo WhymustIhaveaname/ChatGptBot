@@ -13,6 +13,8 @@ __status__ = Dev
 """
 
 helpmsg = """发送语音可以转文字并回复
+/clear 清空上下文（十分钟不活跃也会自动清除）
+/summarymode 打开总结模式
 /dalle 描述：将描述转为图片"""
 
 dosmsg = "Sorry, you are not allowed to use this bot. Please contact @fuckkwechat for more information."
@@ -80,7 +82,8 @@ class TelegramMessageParser:
         else:
             await context.bot.send_message(chat_id=update.effective_chat.id,text="Already in summary mode.")
 
-
+    def check_clear_context(self, context: ContextTypes.DEFAULT_TYPE):
+        self.message_manager.check_clear_context()
 
     async def chat_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         # check if user is allowed to use this bot
@@ -140,26 +143,13 @@ class TelegramMessageParser:
         # if exceeds use limit, send message instead
         if image_url is None:
             # sending typing action
-            await context.bot.send_chat_action(
-                chat_id=update.effective_chat.id,
-                action="typing"
-            )
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text=prompt
-            )
+            await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+            await context.bot.send_message(chat_id=update.effective_chat.id,text=prompt)
         else:
             # sending typing action
-            await context.bot.send_chat_action(
-                chat_id=update.effective_chat.id,
-                action="upload_photo"
-            )
+            await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="upload_photo")
             # send image to user
-            await context.bot.send_photo(
-                chat_id = update.effective_chat.id,
-                photo = image_url,
-                caption = prompt
-            )
+            await context.bot.send_photo(chat_id = update.effective_chat.id,photo = image_url,caption = prompt)
 
     async def chat_file(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id,text="Sorry, I can't handle files and photos yet.")
@@ -199,6 +189,7 @@ class TelegramMessageParser:
 
         self.bot.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.PHOTO | filters.AUDIO | filters.VIDEO), self.chat_file))
         self.bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.chat_text))
+        self.bot.job_queue.run_repeating(self.check_clear_context,30*60,first=30*60)
         self.bot.add_error_handler(self.error_handler)
 
     def run_polling(self):

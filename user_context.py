@@ -34,6 +34,10 @@ class UserContext:
     @property
     def messageList(self):
         return self.__messageList
+
+    @property
+    def latestTime(self):
+        return self.__latestTime
     
     def update(self, contactTime, message, source):
         if (source == "user") and (contactTime - self.__latestTime > self.config_dict["wait_time"]) :
@@ -44,4 +48,4 @@ class UserContext:
     def clear_context(self, clear_time):
         self.__latestTime = clear_time
         self.__messageList.clear()
-        
+        self.summarymode = False

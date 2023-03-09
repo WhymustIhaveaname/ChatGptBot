@@ -13,9 +13,9 @@ class MessageManager:
 
         self.userDict = {} #记录用户对话 context 的字典，核心功能数据
         with open("config.json") as f:
-            config_dict = json.load(f)
-        self.img_limit   = config_dict["image_generation_limit_per_day"]
-        self.super_users = config_dict["super_users"]
+            self.config_dict = json.load(f)
+        self.img_limit   = self.config_dict["image_generation_limit_per_day"]
+        self.super_users = self.config_dict["super_users"]
 
         self.__init_usage_table("chat")
         self.__init_usage_table("dalle")
@@ -55,7 +55,7 @@ class MessageManager:
         return answer
 
     def clear_context(self, chatid):
-        if chatid not in self.userDict:
+        if chatid in self.userDict:
             self.userDict[chatid].clear_context(time.time())
 
     def summarymode(self, chatid):
@@ -71,6 +71,17 @@ class MessageManager:
             return 0
         else:
             return 1
+
+    def check_clear_context(self):
+        log("clearing all context... before: %d"%(len(self.userDict)))
+        t = time.time()
+        poping = []
+        for i in self.userDict:
+            if t - self.userDict[i].latestTime > self.config_dict["wait_time"]:
+                poping.append(i)
+        for i in poping:
+            self.userDict.pop(i)
+        log("after: %d"%(len(self.userDict)))
 
     def get_generated_image_url(self, user, prompt):
         tokenum,usednum = self.__check_usage(user,"dalle")

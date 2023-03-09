@@ -29,6 +29,7 @@
 * 增加 Markdown 支持
 * 增加了 `summarymode`
 * 群组鉴权：在 `config.json` 中的 `allowed_users` 中填 chat id 即可
+* 定时清除 Context
 * 增加了 /help、日志和 error 记录
 * 将使用数统计从混乱的字典记录切换到了 sqlite
 * 语音转文字之后先打印结果再试图回复，这样显得反应快一些
