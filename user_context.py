@@ -22,12 +22,14 @@ def log(*msg,l=1,end="\n",logfile=LOGFILE):
             f.write(tempstr)
 
 class UserContext:
-    def __init__(self, contactTime, message):
+    def __init__(self, contactTime):
         self.__messageList = []
         self.__latestTime = contactTime
 
         with open("config.json") as f:
             self.config_dict = json.load(f)
+
+        self.summarymode = False
     
     @property
     def messageList(self):

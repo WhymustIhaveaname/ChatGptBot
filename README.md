@@ -27,6 +27,7 @@
 
 * 超长的文字以文件形式发送（而不是失败）
 * 增加 Markdown 支持
+* 增加了 `summarymode`
 * 群组鉴权：在 `config.json` 中的 `allowed_users` 中填 chat id 即可
 * 增加了 /help、日志和 error 记录
 * 将使用数统计从混乱的字典记录切换到了 sqlite

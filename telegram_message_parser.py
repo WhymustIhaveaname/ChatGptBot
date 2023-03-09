@@ -44,7 +44,7 @@ class TelegramMessageParser:
     def _check_user_allowed(self, userid):
         with open("config.json") as f:
             config_dict = json.load(f)
-        return True userid in config_dict["allowed_users"] else False
+        return True if userid in config_dict["allowed_users"] else False
 
     async def chat_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = update.effective_message.text
@@ -68,7 +68,20 @@ class TelegramMessageParser:
         else:
             await update.message.reply_document(response.encode(), filename="%s.txt"%(message[0:10]))
 
-    # voice message in private chat, speech to text with Whisper API and process with ChatGPT
+    async def clear_context(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        self.message_manager.clear_context(str(update.effective_chat.id))
+        await context.bot.send_message(chat_id=update.effective_chat.id,text="Context cleared.")
+
+
+    async def summarymode(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        r = self.message_manager.summarymode(str(update.effective_chat.id))
+        if r==0:
+            await context.bot.send_message(chat_id=update.effective_chat.id,text="Into summary mode.")
+        else:
+            await context.bot.send_message(chat_id=update.effective_chat.id,text="Already in summary mode.")
+
+
+
     async def chat_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         # check if user is allowed to use this bot
         if not self._check_user_allowed(str(update.effective_chat.id)):
@@ -113,7 +126,6 @@ class TelegramMessageParser:
         response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_chat.id), transcript)
         await update.message.reply_text(response)
 
-    # image_generation command, aka DALLE
     async def image_generation(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._check_user_allowed(str(update.effective_user.id)):
             await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
@@ -149,67 +161,34 @@ class TelegramMessageParser:
                 caption = prompt
             )
 
-
-    # file and photo messages
     async def chat_file(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # get message
-        message = update.effective_message.text
-        # group chat without @username
-        if (update.effective_chat.type == "group" or update.effective_chat.type == "supergroup") and not ("@" + context.bot.username) in message:
-            return
-        # remove @username
-        if (not message is None) and "@" + context.bot.username in message:
-            message = message.replace("@" + context.bot.username, "")
-        # check if user is allowed to use this bot
-        if not self._check_user_allowed(str(update.effective_chat.id)):
-            await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
-            return
-        await context.bot.send_message(
-                chat_id=update.effective_chat.id,
-                text="Sorry, I can't handle files and photos yet."
-            )
+        await context.bot.send_message(chat_id=update.effective_chat.id,text="Sorry, I can't handle files and photos yet.")
 
-    # start command
+
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text="Hello, I'm a ChatGPT bot."
+            text="Hello, I'm a ChatGPT bot.\n"+helpmsg
         )
-        await update.message.reply_text(helpmsg)
 
     async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(helpmsg)
 
     async def error_handler(self,update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        log("Exception: %s"%(context.error,),l=3)
+        log("Exception: %s"%(str(context.error).strip(),),l=3)
 
-    # clear context command
-    async def clear_context(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        self.message_manager.clear_context(str(update.effective_chat.id))
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="Context cleared."
-        )
-    
-    # get user id command
     async def get_user_id(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="```\nuser id: %d\nchat id: %d```"%(update.effective_user.id,update.effective_chat.id),
             parse_mode="Markdown"
         )
-    
-    # unknown command
-    async def unknown(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="Sorry, I didn't understand that command."
-        )
 
     def add_handlers(self):
         self.bot.add_handler(CommandHandler("start", self.start))
         self.bot.add_handler(CommandHandler("help", self.help))
         self.bot.add_handler(CommandHandler("clear", self.clear_context))
+        self.bot.add_handler(CommandHandler("summarymode", self.summarymode))
         self.bot.add_handler(CommandHandler("getid", self.get_user_id))
 
         if self.config_dict["enable_voice"]:
@@ -220,7 +199,6 @@ class TelegramMessageParser:
 
         self.bot.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.PHOTO | filters.AUDIO | filters.VIDEO), self.chat_file))
         self.bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.chat_text))
-        self.bot.add_handler(MessageHandler(filters.COMMAND, self.unknown))
         self.bot.add_error_handler(self.error_handler)
 
     def run_polling(self):

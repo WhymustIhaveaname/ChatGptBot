@@ -41,24 +41,36 @@ class MessageManager:
         """
         t = time.time()
         if chatid not in self.userDict:
-            self.userDict[chatid] = UserContext(t, message)
+            self.userDict[chatid] = UserContext(t)
 
         self.userDict[chatid].update(t, message, "user")
-        answer = self.openai_parser.get_response(chatid, self.userDict[chatid].messageList)
+        answer,tokenum = self.openai_parser.get_response(chatid, self.userDict[chatid].messageList)
         self.userDict[chatid].update(t, answer, "assistant")
 
         try:
-            self.__update_usage(user,len(answer),1,"chat")
+            self.__update_usage(user,tokenum,1,"chat")
         except:
             log("write usage count failed",l=3)
 
         return answer
 
     def clear_context(self, chatid):
-        try:
+        if chatid not in self.userDict:
             self.userDict[chatid].clear_context(time.time())
-        except Exception as e:
-            log(e,l=3)
+
+    def summarymode(self, chatid):
+        if chatid not in self.userDict:
+            self.userDict[chatid] = UserContext(time.time())
+
+        if not self.userDict[chatid].summarymode:
+            msg = " ".join(["You are a large language model whose expertise is reading and summarizing.",
+                            "You will be given a set of materials which may contain knowledge that is unknown to you.",
+                            "You must carefully read them and prepare to answer any questions about them."])
+            self.userDict[chatid].update(time.time(), msg, "system")
+            self.userDict[chatid].summarymode = True
+            return 0
+        else:
+            return 1
 
     def get_generated_image_url(self, user, prompt):
         tokenum,usednum = self.__check_usage(user,"dalle")
