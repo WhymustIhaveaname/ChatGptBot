@@ -4,7 +4,7 @@
 
 Enter description of this module
 
-__author__ = Zhiquan Wang
+__author__ = Zhiquan Wang, Sun Youran
 __copyright__ = Copyright 2022
 __version__ = 1.0
 __maintainer__ = Zhiquan Wang
@@ -18,12 +18,15 @@ helpmsg = """发送语音可以转文字并回复
 /dalle 描述：将描述转为图片"""
 
 dosmsg = "Sorry, you are not allowed to use this bot. Please contact @fuckkwechat for more information."
+errmsg = "Sorry, some error occured, please try again later."
 
+import json
+import os
+import telegram
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-import json, os
-from message_manager import MessageManager
 from user_context import log
+from message_manager import MessageManager
 
 with open("config.json") as f:
     config_dict = json.load(f)
@@ -65,15 +68,21 @@ class TelegramMessageParser:
         # send message to openai
         response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), message)
         # reply response to user
-        if len(response.encode())<4000:
-            await update.message.reply_text(response,parse_mode="Markdown")
-        else:
-            await update.message.reply_document(response.encode(), filename="%s.txt"%(message[0:10]))
+        try:
+            if len(response.encode())<4000:
+                await update.message.reply_text(response,parse_mode="Markdown")
+            else:
+                await update.message.reply_document(response.encode(), filename="%s.txt"%(message[0:10]))
+        except telegram.error.BadRequest:
+            log("failed to send:\n%s"%(response),l=3)
+            await update.message.reply_text(errmsg)
+        except:
+            log("failed to send:\n%s"%(response),l=3)
+            await update.message.reply_text(errmsg)
 
     async def clear_context(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         self.message_manager.clear_context(str(update.effective_chat.id))
         await context.bot.send_message(chat_id=update.effective_chat.id,text="Context cleared.")
-
 
     async def summarymode(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         r = self.message_manager.summarymode(str(update.effective_chat.id))
@@ -90,14 +99,11 @@ class TelegramMessageParser:
         if not self._check_user_allowed(str(update.effective_chat.id)):
             await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
             return
-
-        # sending typing action
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id,
-            action="typing"
-        )
         
         try:
+            # sending typing action
+            await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+
             file_id = update.effective_message.voice.file_id
             new_file = await context.bot.get_file(file_id)
             await new_file.download_to_drive(file_id + ".ogg")
@@ -112,20 +118,17 @@ class TelegramMessageParser:
                 transcript = self.message_manager.get_transcript(str(update.effective_chat.id), audio_file)
             os.remove(file_id + ".ogg")
             os.remove(file_id + ".wav")
+
+            # send transcripted text
+            await update.message.reply_text("\"" + transcript + "\"")
             
         except Exception as e:
             await update.message.reply_text("Sorry, something went wrong. Please try again later.")
             log("something went wrong",l=3)
             return
 
-        # send transcripted text
-        await update.message.reply_text("\"" + transcript + "\"")
-
         # send response to this msg
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id,
-            action="typing"
-        )
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
         response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_chat.id), transcript)
         await update.message.reply_text(response)
 
