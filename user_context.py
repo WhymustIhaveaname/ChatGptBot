@@ -45,7 +45,7 @@ class UserContext:
 
         self.__messageList.append({"role": source, "content": message})
         
-    def clear_context(self, clear_time):
-        self.__latestTime = clear_time
-        self.__messageList.clear()
-        self.summarymode = False
+    # def clear_context(self, clear_time):
+    #     self.__latestTime = clear_time
+    #     self.__messageList.clear()
+    #     self.summarymode = False

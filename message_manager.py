@@ -54,10 +54,6 @@ class MessageManager:
 
         return answer
 
-    def clear_context(self, chatid):
-        if chatid in self.userDict:
-            self.userDict[chatid].clear_context(time.time())
-
     def summarymode(self, chatid):
         if chatid not in self.userDict:
             self.userDict[chatid] = UserContext(time.time())
@@ -72,7 +68,11 @@ class MessageManager:
         else:
             return 1
 
-    def check_clear_context(self):
+    def clear_context(self, chatid):
+        if chatid in self.userDict:
+            self.userDict.pop(chatid)
+
+    async def check_clear_context(self):
         log("clearing all context... before: %d"%(len(self.userDict)))
         t = time.time()
         poping = []
