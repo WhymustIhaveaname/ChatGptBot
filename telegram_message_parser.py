@@ -63,7 +63,7 @@ class TelegramMessageParser:
         if groupmsg:
             message = message.replace("@" + context.bot.username, "")
 
-        self._reply_answer(message,update)
+        await self._reply_answer(message,update,context)
 
     async def chat_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         # check if user is allowed to use this bot
@@ -93,9 +93,9 @@ class TelegramMessageParser:
             log("something went wrong",l=3)
             return
 
-        self._reply_answer(transcript,update)
+        await self._reply_answer(transcript,update,context)
 
-    async def _reply_answer(self,msg,update):
+    async def _reply_answer(self,msg,update,context):
         await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
         response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
         # reply response to user
