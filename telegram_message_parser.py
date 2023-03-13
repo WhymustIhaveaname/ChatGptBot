@@ -63,22 +63,69 @@ class TelegramMessageParser:
         if groupmsg:
             message = message.replace("@" + context.bot.username, "")
 
-        # sending typing action
+        self._reply_answer(message,update)
+
+    async def chat_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        # check if user is allowed to use this bot
+        if not self._check_user_allowed(str(update.effective_chat.id)):
+            await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
+            return
+
+        try:
+            # sending typing action
+            await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+
+            file_id = update.effective_message.voice.file_id
+            new_file = await context.bot.get_file(file_id)
+            await new_file.download_to_drive(file_id + ".ogg")
+
+            subprocess.call(['ffmpeg', '-i', file_id + '.ogg', file_id + '.wav'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            with open(file_id + ".wav", "rb") as audio_file:
+                transcript = self.message_manager.get_transcript(str(update.effective_chat.id), audio_file)
+            os.remove(file_id + ".ogg")
+            os.remove(file_id + ".wav")
+
+            # send transcripted text
+            await update.message.reply_text("\"" + transcript + "\"")
+
+        except Exception as e:
+            await update.message.reply_text("Sorry, something went wrong. Please try again later.")
+            log("something went wrong",l=3)
+            return
+
+        self._reply_answer(transcript,update)
+
+    async def _reply_answer(self,msg,update):
         await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
-        # send message to openai
-        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), message)
+        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
         # reply response to user
         try:
             if len(response.encode())<4000:
                 await update.message.reply_text(response,parse_mode="Markdown")
             else:
-                await update.message.reply_document(response.encode(), filename="%s.txt"%(message[0:10]))
-        except telegram.error.BadRequest:
+                await update.message.reply_document(response.encode(), filename="%s.txt"%(msg[0:10]))
+            return
+        except telegram.error.TelegramError:
             log("failed to send:\n%s"%(response),l=3)
+        except:
+            log("",l=3)
+            await update.message.reply_text(errmsg)
+            return
+
+        try:
+            await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+            if len(response.encode())<4000:
+                await update.message.reply_text(response)
+            else:
+                await update.message.reply_document(response.encode(), filename="%s.txt"%(msg[0:10]))
+            return
+        except telegram.error.TelegramError:
+            log("failed to send again:\n%s"%(response),l=3)
             await update.message.reply_text(errmsg)
         except:
-            log("failed to send:\n%s"%(response),l=3)
+            log("",l=3)
             await update.message.reply_text(errmsg)
+
 
     async def clear_context(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         self.message_manager.clear_context(str(update.effective_chat.id))
@@ -93,44 +140,6 @@ class TelegramMessageParser:
 
     def check_clear_context(self, context: ContextTypes.DEFAULT_TYPE):
         self.message_manager.check_clear_context()
-
-    async def chat_voice(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        # check if user is allowed to use this bot
-        if not self._check_user_allowed(str(update.effective_chat.id)):
-            await context.bot.send_message(chat_id=update.effective_chat.id,text=dosmsg)
-            return
-        
-        try:
-            # sending typing action
-            await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
-
-            file_id = update.effective_message.voice.file_id
-            new_file = await context.bot.get_file(file_id)
-            await new_file.download_to_drive(file_id + ".ogg")
-
-            file_size = os.path.getsize(file_id + ".ogg") / 1000
-            # if file_size > 50:
-            #     await update.message.reply_text("Sorry, the voice message is too long.")
-            #     return
-
-            subprocess.call(['ffmpeg', '-i', file_id + '.ogg', file_id + '.wav'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            with open(file_id + ".wav", "rb") as audio_file:
-                transcript = self.message_manager.get_transcript(str(update.effective_chat.id), audio_file)
-            os.remove(file_id + ".ogg")
-            os.remove(file_id + ".wav")
-
-            # send transcripted text
-            await update.message.reply_text("\"" + transcript + "\"")
-            
-        except Exception as e:
-            await update.message.reply_text("Sorry, something went wrong. Please try again later.")
-            log("something went wrong",l=3)
-            return
-
-        # send response to this msg
-        await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
-        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_chat.id), transcript)
-        await update.message.reply_text(response)
 
     async def image_generation(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not self._check_user_allowed(str(update.effective_user.id)):
