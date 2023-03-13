@@ -101,7 +101,10 @@ class TelegramMessageParser:
         # reply response to user
         try:
             if len(response.encode())<4000:
-                await update.message.reply_text(response,parse_mode="Markdown")
+                if "```" in response:
+                    await update.message.reply_text(response,parse_mode="Markdown")
+                else:
+                    await update.message.reply_text(response)
             else:
                 await update.message.reply_document(response.encode(), filename="%s.txt"%(msg[0:10]))
             return
@@ -127,10 +130,6 @@ class TelegramMessageParser:
             await update.message.reply_text(errmsg)
 
 
-    async def clear_context(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        self.message_manager.clear_context(str(update.effective_chat.id))
-        await context.bot.send_message(chat_id=update.effective_chat.id,text="Context cleared.")
-
     async def summarymode(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         r = self.message_manager.summarymode(str(update.effective_chat.id))
         if r==0:
@@ -138,7 +137,11 @@ class TelegramMessageParser:
         else:
             await context.bot.send_message(chat_id=update.effective_chat.id,text="Already in summary mode.")
 
-    def check_clear_context(self, context: ContextTypes.DEFAULT_TYPE):
+    async def clear_context(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        self.message_manager.clear_context(str(update.effective_chat.id))
+        await context.bot.send_message(chat_id=update.effective_chat.id,text="Context cleared.")
+
+    async def check_clear_context(self, context: ContextTypes.DEFAULT_TYPE):
         self.message_manager.check_clear_context()
 
     async def image_generation(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
