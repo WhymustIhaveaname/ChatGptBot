@@ -41,11 +41,6 @@ class UserContext:
     
     def update(self, contactTime, message, source):
         if (source == "user") and (contactTime - self.__latestTime > self.config_dict["wait_time"]) :
-            self.clear_context(contactTime)
+            self.__init__(contactTime)
 
         self.__messageList.append({"role": source, "content": message})
-        
-    # def clear_context(self, clear_time):
-    #     self.__latestTime = clear_time
-    #     self.__messageList.clear()
-    #     self.summarymode = False
