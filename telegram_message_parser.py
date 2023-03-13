@@ -22,6 +22,7 @@ errmsg = "Sorry, some error occured, please try again later."
 
 import json
 import os
+import re
 import telegram
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
@@ -97,16 +98,20 @@ class TelegramMessageParser:
 
     async def _reply_answer(self,msg,update,context):
         await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+        log("getting response")
         response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
         # reply response to user
         try:
+            await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+            log("sending tg...")
             if len(response.encode())<4000:
-                if "```" in response:
+                if "```" in response or re.search("\\|[ :]{0,2}-+[ :]{0,2}\\|",response) is not None:
                     await update.message.reply_text(response,parse_mode="Markdown")
                 else:
                     await update.message.reply_text(response)
             else:
                 await update.message.reply_document(response.encode(), filename="%s.txt"%(msg[0:10]))
+            log("sent")
             return
         except telegram.error.TelegramError:
             log("failed to send:\n%s"%(response),l=3)
