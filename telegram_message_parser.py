@@ -97,12 +97,14 @@ class TelegramMessageParser:
         await self._reply_answer(transcript,update,context)
 
     async def _reply_answer(self,msg,update,context):
+        tik = time.time()
         await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
         log("getting response")
         response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
         # reply response to user
         try:
-            await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+            if time.time()-tik>5:
+                await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
             log("sending tg...")
             if len(response.encode())<4000:
                 if "```" in response or re.search("\\|[ :]{0,2}-+[ :]{0,2}\\|",response) is not None:
