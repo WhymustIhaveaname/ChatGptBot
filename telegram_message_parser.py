@@ -25,16 +25,12 @@ import os
 import re
 import time
 import telegram
+import subprocess
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-from user_context import log
+from utils import log
 from message_manager import MessageManager
 
-with open("config.json") as f:
-    config_dict = json.load(f)
-
-if config_dict["enable_voice"]:
-    import subprocess
 
 class TelegramMessageParser:
     def __init__(self):
@@ -176,7 +172,6 @@ class TelegramMessageParser:
 
     async def chat_file(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id,text="Sorry, I can't handle files and photos yet.")
-
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(

@@ -14,23 +14,35 @@ __status__ = Dev
 
 import openai, json, os
 import datetime
+from utils import log
 
 class OpenAIParser:
-    def __init__(self):
+    def __init__(self,model="gpt-3.5-turbo"):
+        self.model = model
         with open("config.json") as f:
             self.config_dict = json.load(f)
         # openai.organization = self.config_dict["ORGANIZATION"] if "ORGANIZATION" in self.config_dict else "Personal"
         openai.api_key = self.config_dict["openai_api_key"]
     
-    def get_response(self, userid, context_messages):
-        context_messages.insert(0, {"role": "system", "content": "You are a helpful assistant"})
+    def get_response(self, context_messages):
+        "return message and number of tokens used"
+        if len(context_messages)==0 or context_messages[0]["role"]!="system":
+            context_messages.insert(0, {"role": "system", "content": "You are a helpful assistant"})
+
         try:
-            response = openai.ChatCompletion.create(model = "gpt-3.5-turbo-0301",messages = context_messages)
-            return response["choices"][0]["message"]["content"],response["usage"]["total_tokens"]
+            # check https://platform.openai.com/docs/guides/chat/response-format for the format
+            response  = openai.ChatCompletion.create(model = self.model, messages = context_messages)
+            token_num = response["usage"]["total_tokens"]
+            msg       = response["choices"][0]["message"]["content"]
+            freason   = response["choices"][0]["finish_reason"]
+            if freason!="stop":
+                msg  += "\nFinish because %s"%(freason)
+            return msg,token_num
         except Exception as e:
+            log("",l=3)
             return str(e) + "\nSorry, I am not feeling well. Please try again later.", 0
 
-    def speech_to_text(self, userid, audio_file):
+    def speech_to_text(self, audio_file):
         transcript = openai.Audio.transcribe("whisper-1", audio_file)
         return transcript["text"]
 
@@ -41,4 +53,4 @@ class OpenAIParser:
 
 if __name__ == "__main__":
     openai_parser = OpenAIParser()
-    print(openai_parser.get_response("123", [{"role": "user", "content": "Tell me a joke."}]))
+    print(openai_parser.get_response([{"role": "user", "content": "Tell me a joke."}]))

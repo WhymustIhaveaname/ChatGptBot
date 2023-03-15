@@ -26,12 +26,12 @@
 ## 相对于原版的更新
 
 * 超长的文字以文件形式发送（而不是失败）
-* 增加 Markdown 支持
+* 增加 Markdown 支持，如果 Markdown 发送失败则会回滚到文字模式再次发送
 * 增加了 `summarymode`
 * 群组鉴权：在 `config.json` 中的 `allowed_users` 中填 chat id 即可
 * 定时清除 Context
-* 增加了 /help、日志和 error 记录
-* 将使用数统计从混乱的字典记录切换到了 sqlite
+* 增加了 /help、日志和错误记录
+* 将使用数统计从混乱的字典记录切换到了 sqlite3
 * 语音转文字之后先打印结果再试图回复，这样显得反应快一些
 * 改了一些小 bug、catch 住了一些 API 调用时的报错
 * 将 Windows line ending 改为了 Unix 的，并删除了行尾多余的空白字符
@@ -40,9 +40,9 @@
 
 按自顶向下的顺序
 * `telegram_message_parser.py` 负责和 Telegram 的接口，依赖 `message_manager.py`
-* `message_manager.py` 负责语境维护，依赖 `user_context.py` 和 `openai_parser.py`
-* `user_context.py` 负责语境维护
+* `message_manager.py` 负责语境维护，依赖 `openai_parser.py`
 * `openai_parser.py` 负责 OpenAI 接口
+* `utils.py` 包含一个好用的 `log` 函数
 
 <!--![](/docs/dialog.png)-->
 
