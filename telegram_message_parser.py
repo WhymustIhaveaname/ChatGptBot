@@ -96,21 +96,23 @@ class TelegramMessageParser:
     async def _reply_answer(self,msg,update,context):
         tik = time.time()
         await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
-        log("getting response")
         response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
         # reply response to user
         try:
             if time.time()-tik>5:
                 await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
-            log("sending tg...")
-            if len(response.encode())<4000:
-                if "```" in response or re.search("\\|[ :]{0,2}-+[ :]{0,2}\\|",response) is not None:
-                    await update.message.reply_text(response,parse_mode="Markdown")
-                else:
-                    await update.message.reply_text(response)
+
+            mkd = re.search(r"```[^`]+?```|`[^`]+?`|\|[ :]{0,2}-+[ :]{0,2}\|",response)
+            if mkd:
+                response = response.split('`')
+                for i in range(0,len(response),2):
+                    response[i] = response[i].replace("_",r"\_").replace("*",r"\*")
+                response = "`".join(response)
+
+            if len(response.encode())<4096:
+                await update.message.reply_text(response,parse_mode="Markdown" if mkd else None)
             else:
                 await update.message.reply_document(response.encode(), filename="%s.txt"%(msg[0:10]))
-            log("sent")
             return
         except telegram.error.TelegramError:
             log("failed to send:\n%s"%(response),l=3)
@@ -120,7 +122,6 @@ class TelegramMessageParser:
             return
 
         try:
-            await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
             if len(response.encode())<4000:
                 await update.message.reply_text(response)
             else:
@@ -182,15 +183,15 @@ class TelegramMessageParser:
     async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(helpmsg)
 
-    async def error_handler(self,update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        log("Exception: %s"%(str(context.error).strip(),),l=3)
-
     async def get_user_id(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text="```\nuser id: %d\nchat id: %d```"%(update.effective_user.id,update.effective_chat.id),
             parse_mode="Markdown"
         )
+
+    async def error_handler(self,update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        log("Exception: %s"%(str(context.error).strip(),),l=3)
 
     def add_handlers(self):
         self.bot.add_handler(CommandHandler("start", self.start))
