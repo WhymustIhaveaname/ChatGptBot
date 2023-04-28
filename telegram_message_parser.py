@@ -26,6 +26,7 @@ import re
 import time
 import telegram
 import subprocess
+import httpx
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from utils import log
@@ -134,6 +135,25 @@ class TelegramMessageParser:
             log("",l=3)
             await update.message.reply_text(errmsg)
 
+    async def send_test_msg(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        # todo: `` 表示 ` 但 tg 不支持
+        #response = "这样就可以对应任何数字而不只是 3500 了。注意使用模板字面量 `` ` `` 来包含变量。"
+        # todo: [ 表示链接，不配对所以报错
+        #response = "[0, 1) `torch.rand_like()`"
+        try:
+            mkd = re.search(r"```[^`]+?```|`[^`]+?`|\|[ :]{0,2}-+[ :]{0,2}\|",response)
+            if mkd:
+                log('markdown detected')
+                response = response.split('`')
+                for i in range(0,len(response),2):
+                    response[i] = response[i].replace("_",r"\_").replace("*",r"\*")#.replace("[",r"\[")
+                log(response)
+                response = "`".join(response)
+                log(response)
+
+            await update.message.reply_text(response,parse_mode="Markdown" if mkd else None)
+        except:
+            log("",l=3)
 
     async def summarymode(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         r = self.message_manager.summarymode(str(update.effective_chat.id))
@@ -190,7 +210,25 @@ class TelegramMessageParser:
             parse_mode="Markdown"
         )
 
+    async def notify_users(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        msg = "已经升级 GPT4 啦！祝大家玩得开心"
+        with open("config.json") as f:
+            config_dict = json.load(f)
+
+        for userid in config_dict["allowed_users"]:
+            if not userid.isnumeric():
+                log("skip %s"%(userid))
+                continue
+            log("sending msg to %s"%(userid))
+            try:
+                await context.bot.send_message(userid,msg,disable_notification=True)
+                time.sleep(1)
+            except:
+                log("",l=3)
+
     async def error_handler(self,update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if isinstance(context.error,httpx.LocalProtocolError):
+            return
         log("Exception: %s"%(str(context.error).strip(),),l=3)
 
     def add_handlers(self):
@@ -199,6 +237,8 @@ class TelegramMessageParser:
         self.bot.add_handler(CommandHandler("clear", self.clear_context))
         self.bot.add_handler(CommandHandler("summarymode", self.summarymode))
         self.bot.add_handler(CommandHandler("getid", self.get_user_id))
+        self.bot.add_handler(CommandHandler("notify", self.notify_users))
+        #self.bot.add_handler(CommandHandler("test",self.send_test_msg))
 
         if self.config_dict["enable_voice"]:
             self.bot.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.VOICE, self.chat_voice))
@@ -220,5 +260,6 @@ class TelegramMessageParser:
         log("started")
 
 if __name__ == "__main__":
-    TelegramMessageParser().run_polling()
+    t = TelegramMessageParser()
+    t.run_polling()
 

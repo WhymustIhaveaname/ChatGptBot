@@ -17,7 +17,7 @@ import datetime
 from utils import log
 
 class OpenAIParser:
-    def __init__(self,model="gpt-3.5-turbo"):
+    def __init__(self,model="gpt-4-0314"):
         self.model = model
         with open("config.json") as f:
             self.config_dict = json.load(f)
@@ -39,7 +39,7 @@ class OpenAIParser:
                 msg  += "\nFinish because %s"%(freason)
             return msg,token_num
         except Exception as e:
-            log("",l=3)
+            log(e,l=2)
             return str(e) + "\nSorry, I am not feeling well. Please try again later.", 0
 
     def speech_to_text(self, audio_file):
