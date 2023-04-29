@@ -140,6 +140,8 @@ class TelegramMessageParser:
         #response = "这样就可以对应任何数字而不只是 3500 了。注意使用模板字面量 `` ` `` 来包含变量。"
         # todo: [ 表示链接，不配对所以报错
         #response = "[0, 1) `torch.rand_like()`"
+        # 这个也可能出问题
+        #response = "```"
         try:
             mkd = re.search(r"```[^`]+?```|`[^`]+?`|\|[ :]{0,2}-+[ :]{0,2}\|",response)
             if mkd:
@@ -154,6 +156,13 @@ class TelegramMessageParser:
             await update.message.reply_text(response,parse_mode="Markdown" if mkd else None)
         except:
             log("",l=3)
+
+    async def echo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        message = update.effective_message.text
+        log("got in echo: %s"%(message))
+        message = message.replace("/echo","")
+        await update.message.reply_text(message)
+        await update.message.reply_text(message,parse_mode="Markdown")
 
     async def summarymode(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         r = self.message_manager.summarymode(str(update.effective_chat.id))
@@ -237,8 +246,9 @@ class TelegramMessageParser:
         self.bot.add_handler(CommandHandler("clear", self.clear_context))
         self.bot.add_handler(CommandHandler("summarymode", self.summarymode))
         self.bot.add_handler(CommandHandler("getid", self.get_user_id))
-        self.bot.add_handler(CommandHandler("notify", self.notify_users))
+        #self.bot.add_handler(CommandHandler("notify", self.notify_users))
         #self.bot.add_handler(CommandHandler("test",self.send_test_msg))
+        self.bot.add_handler(CommandHandler("echo",self.echo))
 
         if self.config_dict["enable_voice"]:
             self.bot.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.VOICE, self.chat_voice))

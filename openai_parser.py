@@ -32,7 +32,7 @@ class OpenAIParser:
         try:
             # check https://platform.openai.com/docs/guides/chat/response-format for the format
             response  = openai.ChatCompletion.create(model = self.model, messages = context_messages)
-            token_num = response["usage"]["total_tokens"]
+            token_num = response["usage"]["prompt_tokens"] + response["usage"]["completion_tokens"]//2
             msg       = response["choices"][0]["message"]["content"]
             freason   = response["choices"][0]["finish_reason"]
             if freason!="stop":
