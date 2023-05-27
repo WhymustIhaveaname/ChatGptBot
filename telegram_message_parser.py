@@ -171,6 +171,13 @@ class TelegramMessageParser:
         else:
             await context.bot.send_message(chat_id=update.effective_chat.id,text="Already in summary mode.")
 
+    async def gpt4(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        r = self.message_manager.set_gpt4(str(update.effective_chat.id))
+        if r==0:
+            await context.bot.send_message(chat_id=update.effective_chat.id,text="Into GPT4 mode.")
+        else:
+            await context.bot.send_message(chat_id=update.effective_chat.id,text="Already in GPT4 mode.")
+
     async def clear_context(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         self.message_manager.clear_context(str(update.effective_chat.id))
         await context.bot.send_message(chat_id=update.effective_chat.id,text="Context cleared.")
@@ -245,6 +252,7 @@ class TelegramMessageParser:
         self.bot.add_handler(CommandHandler("help", self.help))
         self.bot.add_handler(CommandHandler("clear", self.clear_context))
         self.bot.add_handler(CommandHandler("summarymode", self.summarymode))
+        self.bot.add_handler(CommandHandler("gpt4", self.gpt4))
         self.bot.add_handler(CommandHandler("getid", self.get_user_id))
         #self.bot.add_handler(CommandHandler("notify", self.notify_users))
         #self.bot.add_handler(CommandHandler("test",self.send_test_msg))

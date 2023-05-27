@@ -17,6 +17,7 @@ class UserContext:
             self.config_dict = json.load(f)
 
         self.summarymode = False
+        self.model = "gpt-3.5-turbo-0301"
 
     @property
     def messageList(self):
@@ -55,7 +56,7 @@ class MessageManager:
             self.userDict[chatid] = UserContext(t)
 
         self.userDict[chatid].update(t, message, "user")
-        answer,tokenum = self.openai_parser.get_response(self.userDict[chatid].messageList)
+        answer,tokenum = self.openai_parser.get_response(self.userDict[chatid].messageList,self.userDict[chatid].model)
         self.userDict[chatid].update(t, answer, "assistant")
 
         try:
@@ -82,6 +83,16 @@ class MessageManager:
     def clear_context(self, chatid):
         if chatid in self.userDict:
             self.userDict.pop(chatid)
+
+    def set_gpt4(self, chatid):
+        t = time.time()
+        if chatid not in self.userDict:
+            self.userDict[chatid] = UserContext(t)
+        if self.userDict[chatid].model.startswith('gpt-4'):
+            return 1
+        else:
+            self.userDict[chatid].model = "gpt-4"
+            return 0
 
     async def check_clear_context(self):
         log("clearing all context... before: %d"%(len(self.userDict)))
