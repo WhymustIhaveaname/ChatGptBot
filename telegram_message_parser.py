@@ -14,6 +14,7 @@ __status__ = Dev
 
 helpmsg = """发送语音可以转文字并回复
 /clear 清空上下文（十分钟不活跃也会自动清除）
+/gpt4 当前对话将使用 GPT4
 /summarymode 打开总结模式
 /dalle 描述：将描述转为图片"""
 
@@ -227,7 +228,7 @@ class TelegramMessageParser:
         )
 
     async def notify_users(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        msg = "已经升级 GPT4 啦！祝大家玩得开心"
+        msg = "增加了一个 /gpt4 命令，可以使当前对话暂时使用 GPT4, 否则默认是 GPT3.5, 因为 4 太慢了。"
         with open("config.json") as f:
             config_dict = json.load(f)
 
