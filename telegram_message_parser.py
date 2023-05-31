@@ -14,7 +14,7 @@ __status__ = Dev
 
 helpmsg = """发送语音可以转文字并回复
 /clear 清空上下文（十分钟不活跃也会自动清除）
-/gpt4 当前对话将使用 GPT4
+/gpt4 当前对话将使用 GPT4, 注意 GPT4 的延时是 GPT3.5 的 4 倍, 收费是 30 倍, 所以请谨慎使用
 /summarymode 打开总结模式
 /dalle 描述：将描述转为图片"""
 
@@ -27,7 +27,9 @@ import re
 import time
 import telegram
 import subprocess
+import asyncio
 import httpx
+from multiprocessing import Process,Queue
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from utils import log
@@ -96,14 +98,30 @@ class TelegramMessageParser:
         await self._reply_answer(transcript,update,context)
 
     async def _reply_answer(self,msg,update,context):
-        tik = time.time()
-        await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
-        response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
+        #response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
+        q = Queue()
+        def get_response():
+            try:
+                response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
+                q.put(response)
+            except Exception as e:
+                response = "error happend in subprocess: %s"%(e)
+                q.put(response)
+
+        p1 = Process(target=get_response)
+        p1.start()
+        for i in range(3000):
+            if p1.is_alive():
+                if i%100==0:
+                    await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+                await asyncio.sleep(0.1)
+            else:
+                break
+        p1.join()
+        response = q.get()
+
         # reply response to user
         try:
-            if time.time()-tik>5:
-                await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
-
             mkd = re.search(r"```[^`]+?```|`[^`]+?`|\|[ :]{0,2}-+[ :]{0,2}\|",response)
             if mkd:
                 response = response.split('`')

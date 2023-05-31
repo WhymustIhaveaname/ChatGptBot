@@ -13,7 +13,7 @@ __status__ = Dev
 """
 
 import openai, json, os
-import datetime
+import datetime, time
 from utils import log
 
 class OpenAIParser:
@@ -23,7 +23,7 @@ class OpenAIParser:
         # openai.organization = self.config_dict["ORGANIZATION"] if "ORGANIZATION" in self.config_dict else "Personal"
         openai.api_key = self.config_dict["openai_api_key"]
     
-    def get_response(self, context_messages,model):
+    def get_response(self, context_messages, model):
         "return message and number of tokens used"
         #log('using %s'%(model))
         if len(context_messages)==0 or context_messages[0]["role"]!="system":
@@ -56,6 +56,29 @@ class OpenAIParser:
         image_url = response["data"][0]["url"]
         return image_url
 
-if __name__ == "__main__":
+def test_lantency():
+    context_messages = []
+    context_messages.append({'role': 'system', 'content': '''
+You will be asked a series of questions about Python.
+Please try your best to be helpful.'''})
+    questions = ["""
+1. 如何在一个函数内部修改全局变量
+2. 列出5个python标准库
+3. 字典如何删除键和合并两个字典
+4. 谈下python的GIL
+5. python实现列表去重的方法"""]
+    for i,q in enumerate(questions):
+        context_messages.append({'role': 'user', 'content': '%d: %s'%(i,q)})
     openai_parser = OpenAIParser()
-    print(openai_parser.get_response([{"role": "user", "content": "Tell me a joke."}]))
+    for model in ['gpt-3.5-turbo-0301','gpt-3.5-turbo','gpt-4-0314','gpt-4']:
+        log("testing %s"%(model))
+        tik = time.time()
+        msg,token_num = openai_parser.get_response(context_messages,model)
+        tok = time.time()
+        log("msg: %s"%(msg))
+        log('time of %s: %.2fs, %.2fms'%(model,tok-tik,1000*(tok-tik)/token_num))
+
+if __name__ == "__main__":
+    # openai_parser = OpenAIParser()
+    # print(openai_parser.get_response([{"role": "user", "content": "Tell me a joke."}]))
+    test_lantency()

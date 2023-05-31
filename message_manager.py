@@ -17,7 +17,7 @@ class UserContext:
             self.config_dict = json.load(f)
 
         self.summarymode = False
-        self.model = "gpt-3.5-turbo-0301"
+        self.model = "gpt-3.5-turbo"
 
     @property
     def messageList(self):
