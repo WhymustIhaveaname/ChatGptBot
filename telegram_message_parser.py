@@ -112,8 +112,11 @@ class TelegramMessageParser:
         p1.start()
         for i in range(3000):
             if p1.is_alive():
-                if i%100==0:
-                    await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+                if i%60==0:
+                    try:
+                        await context.bot.send_chat_action(chat_id=update.effective_chat.id,action="typing")
+                    except:
+                        pass
                 await asyncio.sleep(0.1)
             else:
                 break
