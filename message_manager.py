@@ -8,14 +8,14 @@ import openai
 from utils import log
 from openai_parser import OpenAIParser
 
+with open("config.json") as f:
+    config_dict = json.load(f)
+
 class UserContext:
     def __init__(self, contactTime):
-        self.__messageList = []
         self.__latestTime = contactTime
-
-        with open("config.json") as f:
-            self.config_dict = json.load(f)
-
+        self.__messageList = [{'role': 'system', 'content': 'You are a helpful assistant'},]
+        self.wait_time = config_dict["wait_time"]
         self.summarymode = False
         self.model = "gpt-3.5-turbo"
 
@@ -28,8 +28,10 @@ class UserContext:
         return self.__latestTime
 
     def update(self, contactTime, message, source):
-        if (source == "user") and (contactTime - self.__latestTime > self.config_dict["wait_time"]) :
+        if (source == "user") and (contactTime - self.__latestTime > self.wait_time) :
             self.__init__(contactTime)
+        else:
+            self.__latestTime = contactTime
 
         self.__messageList.append({"role": source, "content": message})
 
@@ -39,17 +41,16 @@ class MessageManager:
 
         self.userDict = {} #记录用户对话 context 的字典，核心功能数据
 
-        with open("config.json") as f:
-            self.config_dict = json.load(f)
-        self.img_limit   = self.config_dict["image_generation_limit_per_day"]
-        self.super_users = self.config_dict["super_users"]
+        self.img_limit   = config_dict["image_generation_limit_per_day"]
+        self.super_users = config_dict["super_users"]
 
         self.__init_usage_table("chat")
         self.__init_usage_table("dalle")
 
-    def get_response(self, chatid, user, message):
+    def get_response(self, chatid, userid, message):
         """
-            user 仅用于记录使用情况
+            chatid 用于追踪上下文
+            userid 用于记录使用情况
         """
         t = time.time()
         if chatid not in self.userDict:
@@ -60,7 +61,7 @@ class MessageManager:
         self.userDict[chatid].update(t, answer, "assistant")
 
         try:
-            self.__update_usage(user,tokenum,1,"chat") # 1 是使用次数
+            self.__update_usage(userid,tokenum,1,"chat") # 1 是使用次数
         except:
             log("write usage count failed",l=3)
 
@@ -94,12 +95,12 @@ class MessageManager:
             self.userDict[chatid].model = "gpt-4"
             return 0
 
-    async def check_clear_context(self):
+    def check_clear_context(self):
         log("clearing all context... before: %d"%(len(self.userDict)))
         t = time.time()
         poping = []
         for i in self.userDict:
-            if t - self.userDict[i].latestTime > self.config_dict["wait_time"]:
+            if t - self.userDict[i].latestTime > self.userDict[i].wait_time:
                 poping.append(i)
         for i in poping:
             self.userDict.pop(i)

@@ -26,8 +26,8 @@ class OpenAIParser:
     def get_response(self, context_messages, model):
         "return message and number of tokens used"
         #log('using %s'%(model))
-        if len(context_messages)==0 or context_messages[0]["role"]!="system":
-            context_messages.insert(0, {"role": "system", "content": "You are a helpful assistant"})
+        # if len(context_messages)==0 or context_messages[0]["role"]!="system":
+        #     context_messages.insert(0, {"role": "system", "content": "You are a helpful assistant"})
 
         try:
             # check https://platform.openai.com/docs/guides/chat/response-format for the format

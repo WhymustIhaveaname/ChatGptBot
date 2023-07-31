@@ -98,15 +98,20 @@ class TelegramMessageParser:
         await self._reply_answer(transcript,update,context)
 
     async def _reply_answer(self,msg,update,context):
-        #response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
+        # naive 版本
+        # response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
+
+        # 带typing版本
+        chatid = str(update.effective_chat.id)
+        userid = str(update.effective_user.id)
         q = Queue()
         def get_response():
             try:
-                response = self.message_manager.get_response(str(update.effective_chat.id), str(update.effective_user.id), msg)
-                q.put(response)
+                response = self.message_manager.get_response(chatid,userid,msg)
+                q.put((response,self.message_manager.userDict[chatid]))
             except Exception as e:
                 response = "error happend in subprocess: %s"%(e)
-                q.put(response)
+                q.put((response,self.message_manager.userDict[chatid]))
 
         p1 = Process(target=get_response)
         p1.start()
@@ -121,7 +126,7 @@ class TelegramMessageParser:
             else:
                 break
         p1.join()
-        response = q.get()
+        response,self.message_manager.userDict[chatid] = q.get()
 
         # reply response to user
         try:
@@ -156,6 +161,19 @@ class TelegramMessageParser:
         except:
             log("",l=3)
             await update.message.reply_text(errmsg)
+
+    async def dump(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chatid = str(update.effective_chat.id)
+        userid = str(update.effective_user.id)
+        if chatid in self.message_manager.userDict:
+            ud = self.message_manager.userDict[chatid]
+            info = ["model: %s"%(ud.model),
+                    "summarymode: %s"%(ud.summarymode),
+                    "livetime: %d (expire: %d)"%(time.time()-ud.latestTime,ud.wait_time),
+                    "msgs len: %d\n%s"%(len(ud.messageList),ud.messageList[:2])]
+            await update.message.reply_text("\n".join(info))
+        else:
+            await update.message.reply_text("no chat info for this user so far")
 
     async def send_test_msg(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         # todo: `` 表示 ` 但 tg 不支持
@@ -276,6 +294,7 @@ class TelegramMessageParser:
         self.bot.add_handler(CommandHandler("summarymode", self.summarymode))
         self.bot.add_handler(CommandHandler("gpt4", self.gpt4))
         self.bot.add_handler(CommandHandler("getid", self.get_user_id))
+        self.bot.add_handler(CommandHandler("dump", self.dump))
         #self.bot.add_handler(CommandHandler("notify", self.notify_users))
         #self.bot.add_handler(CommandHandler("test",self.send_test_msg))
         self.bot.add_handler(CommandHandler("echo",self.echo))
@@ -288,7 +307,7 @@ class TelegramMessageParser:
 
         self.bot.add_handler(MessageHandler(filters.ChatType.PRIVATE & (filters.PHOTO | filters.AUDIO | filters.VIDEO), self.chat_file))
         self.bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), self.chat_text))
-        self.bot.job_queue.run_repeating(self.check_clear_context,30*60,first=30*60)
+        self.bot.job_queue.run_repeating(self.check_clear_context,15*60,first=15*60)
         self.bot.add_error_handler(self.error_handler)
 
     def run_polling(self):
