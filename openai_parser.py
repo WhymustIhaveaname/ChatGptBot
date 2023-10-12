@@ -25,9 +25,15 @@ class OpenAIParser:
     
     def get_response(self, context_messages, model):
         "return message and number of tokens used"
-        #log('using %s'%(model))
-        # if len(context_messages)==0 or context_messages[0]["role"]!="system":
-        #     context_messages.insert(0, {"role": "system", "content": "You are a helpful assistant"})
+
+        if model.startswith('gpt-4'):
+            tokenlimit = 8192
+        else:
+            tokenlimit = 4097
+
+        token_num = len(str(context_messages))
+        if token_num>tokenlimit:
+            return "message too long (%d>%d), please /clear the context or try /gpt4"%(token_num,tokenlimit),0
 
         try:
             # check https://platform.openai.com/docs/guides/chat/response-format for the format
@@ -37,15 +43,16 @@ class OpenAIParser:
             if freason!="stop":
                 msg  += "\nFinish because %s"%(freason)
 
+            # the metric is cent now
             if model.startswith('gpt-4'):
-                token_num = response["usage"]["prompt_tokens"]*15 + response["usage"]["completion_tokens"]*30
+                token_num = response["usage"]["prompt_tokens"]*3 + response["usage"]["completion_tokens"]*6
             else:
-                token_num = response["usage"]["prompt_tokens"] + response["usage"]["completion_tokens"]
+                token_num = response["usage"]["prompt_tokens"]*0.15 + response["usage"]["completion_tokens"]*0.2
 
             return msg,token_num
         except Exception as e:
             log(e,l=2)
-            return str(e) + "\nPlease try again later.", 0
+            return str(e) + "\nPlease try again later.", token_num*0.15
 
     def speech_to_text(self, audio_file):
         transcript = openai.Audio.transcribe("whisper-1", audio_file)
