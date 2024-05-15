@@ -17,7 +17,8 @@ class UserContext:
         self.__messageList = [{'role': 'system', 'content': 'You are a helpful assistant'},]
         self.wait_time = config_dict["wait_time"]
         self.summarymode = False
-        self.model = "gpt-3.5-turbo"
+        #self.model = "gpt-3.5-turbo"
+        self.model = "gpt-4o"
 
     @property
     def messageList(self):
@@ -89,10 +90,10 @@ class MessageManager:
         t = time.time()
         if chatid not in self.userDict:
             self.userDict[chatid] = UserContext(t)
-        if self.userDict[chatid].model.startswith('gpt-4'):
+        if self.userDict[chatid].model == 'gpt-4o':
             return 1
         else:
-            self.userDict[chatid].model = "gpt-4"
+            self.userDict[chatid].model = "gpt-4-turbo"
             return 0
 
     def check_clear_context(self):

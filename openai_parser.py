@@ -26,7 +26,11 @@ class OpenAIParser:
     def get_response(self, context_messages, model):
         "return message and number of tokens used"
 
-        if model.startswith('gpt-4'):
+        if model.startswith('gpt-4o'):
+            tokenlimit = 128000//2
+        elif model.startswith('gpt-4-turbo'):
+            tokenlimit = 128000//2
+        elif model.startswith('gpt-4'):
             tokenlimit = 8192
         else:
             tokenlimit = 4097

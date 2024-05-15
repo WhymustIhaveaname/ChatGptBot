@@ -267,7 +267,8 @@ class TelegramMessageParser:
         )
 
     async def notify_users(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        msg = "增加了一个 /gpt4 命令，可以使当前对话暂时使用 GPT4, 否则默认是 GPT3.5, 因为 4 太慢了。"
+        #msg = "增加了一个 /gpt4 命令，可以使当前对话暂时使用 GPT4, 否则默认是 GPT3.5, 因为 4 太慢了。"
+        msg = "将默认模型设置为 gpt-4o，/gpt4 命令会指向 gpt-4-turbo。closeAI 号称 gpt-4o 的速度是 gpt-4-turbo 的 2 倍，同时其语境长度达到了 128000 字。"
         with open("config.json") as f:
             config_dict = json.load(f)
 
