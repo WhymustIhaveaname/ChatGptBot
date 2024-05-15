@@ -90,7 +90,7 @@ class MessageManager:
         t = time.time()
         if chatid not in self.userDict:
             self.userDict[chatid] = UserContext(t)
-        if self.userDict[chatid].model == 'gpt-4o':
+        if self.userDict[chatid].model == 'gpt-4-turbo':
             return 1
         else:
             self.userDict[chatid].model = "gpt-4-turbo"

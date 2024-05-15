@@ -296,7 +296,7 @@ class TelegramMessageParser:
         self.bot.add_handler(CommandHandler("gpt4", self.gpt4))
         self.bot.add_handler(CommandHandler("getid", self.get_user_id))
         self.bot.add_handler(CommandHandler("dump", self.dump))
-        #self.bot.add_handler(CommandHandler("notify", self.notify_users))
+        self.bot.add_handler(CommandHandler("notify", self.notify_users))
         #self.bot.add_handler(CommandHandler("test",self.send_test_msg))
         self.bot.add_handler(CommandHandler("echo",self.echo))
 
