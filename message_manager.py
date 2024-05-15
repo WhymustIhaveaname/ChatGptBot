@@ -96,7 +96,6 @@ class MessageManager:
             return 0
 
     def check_clear_context(self):
-        log("clearing all context... before: %d"%(len(self.userDict)))
         t = time.time()
         poping = []
         for i in self.userDict:
@@ -104,7 +103,6 @@ class MessageManager:
                 poping.append(i)
         for i in poping:
             self.userDict.pop(i)
-        log("after: %d"%(len(self.userDict)))
 
     def get_generated_image_url(self, user, prompt):
         tokenum,usednum = self.__check_usage(user,"dalle")

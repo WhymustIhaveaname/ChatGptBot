@@ -45,7 +45,7 @@ class OpenAIParser:
 
             # the metric is cent now
             if model.startswith('gpt-4'):
-                token_num = response["usage"]["prompt_tokens"]*3 + response["usage"]["completion_tokens"]*6
+                token_num = response["usage"]["prompt_tokens"]*1 + response["usage"]["completion_tokens"]*3
             else:
                 token_num = response["usage"]["prompt_tokens"]*0.15 + response["usage"]["completion_tokens"]*0.2
 
