@@ -16,6 +16,16 @@
 
 并将它们填入 `config.json` 以使用机器人
 
+程序依赖的包有点旧了可能和最新版本不兼容，为此，使用conda或者类似物是一种较为快速的上手方式，您可以参考以下命令
+```
+conda create --name gptbot
+conda activate gptbot
+conda install pip
+pip install -r requirements.txt
+```
+
+程序的入口是 `telegram_message_parser.py`
+
 ## 注意
 
 * tg 机器人的创建请找 [@BotFather](https://t.me/BotFather) 自助进行，事后将对应的 API keys 填入 `config.json`

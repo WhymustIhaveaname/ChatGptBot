@@ -47,11 +47,11 @@ class OpenAIParser:
             if freason!="stop":
                 msg  += "\nFinish because %s"%(freason)
 
-            # the metric is cent now
-            if model.startswith('gpt-4'):
-                token_num = response["usage"]["prompt_tokens"]*1 + response["usage"]["completion_tokens"]*3
+            # the metric is $/M now
+            if model.startswith('gpt-4o'):
+                token_num = response["usage"]["prompt_tokens"]*5 + response["usage"]["completion_tokens"]*15
             else:
-                token_num = response["usage"]["prompt_tokens"]*0.15 + response["usage"]["completion_tokens"]*0.2
+                token_num = response["usage"]["prompt_tokens"]*10 + response["usage"]["completion_tokens"]*30
 
             return msg,token_num
         except Exception as e:
@@ -63,7 +63,7 @@ class OpenAIParser:
         return transcript["text"]
 
     def image_generation(self, userid, prompt):
-        response = openai.Image.create(prompt = prompt, n=1, size = "1024x1024", user = userid)
+        response = openai.Image.create(model="dall-e-3",prompt = prompt, n=1, size = "1024x1024", user = userid)
         image_url = response["data"][0]["url"]
         return image_url
 

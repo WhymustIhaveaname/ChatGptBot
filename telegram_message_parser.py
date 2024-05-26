@@ -104,10 +104,11 @@ class TelegramMessageParser:
         # 带typing版本
         chatid = str(update.effective_chat.id)
         userid = str(update.effective_user.id)
+        edited = update.message is None
         q = Queue()
         def get_response():
             try:
-                response = self.message_manager.get_response(chatid,userid,msg)
+                response = self.message_manager.get_response(chatid,userid,msg,edited)
                 q.put((response,self.message_manager.userDict[chatid]))
             except Exception as e:
                 response = "error happend in subprocess: %s"%(e)
@@ -138,9 +139,9 @@ class TelegramMessageParser:
                 response = "`".join(response)
 
             if len(response.encode())<4096:
-                await update.message.reply_text(response,parse_mode="Markdown" if mkd else None)
+                await update.effective_message.reply_text(response,parse_mode="Markdown" if mkd else None)
             else:
-                await update.message.reply_document(response.encode(), filename="%s.txt"%(msg[0:10]))
+                await update.effective_message.reply_document(response.encode(), filename="%s.txt"%(msg[0:10]))
             return
         except telegram.error.TelegramError:
             log("failed to send:\n%s"%(response),l=3)
@@ -268,7 +269,8 @@ class TelegramMessageParser:
 
     async def notify_users(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         #msg = "增加了一个 /gpt4 命令，可以使当前对话暂时使用 GPT4, 否则默认是 GPT3.5, 因为 4 太慢了。"
-        msg = "将默认模型设置为 gpt-4o，/gpt4 命令会指向 gpt-4-turbo。closeAI 号称 gpt-4o 的速度是 gpt-4-turbo 的 2 倍，同时其语境长度达到了 128000 字。"
+        #msg = "将默认模型设置为 gpt-4o，/gpt4 命令会指向 gpt-4-turbo。closeAI 号称 gpt-4o 的速度是 gpt-4-turbo 的 2 倍，同时其语境长度达到了 128000 字。"
+        msg = "刚刚增加了对编辑消息的响应，如果您觉得刚刚它的回答不满意，可以编辑最近的一条消息让它重新回答。注意：请编辑10min内的最后一条用户消息，否则会出现奇怪的行为。图像生成切换到了 dalle3，您可以试试 /dalle 画一个油画风格的风景画"
         with open("config.json") as f:
             config_dict = json.load(f)
 

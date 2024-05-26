@@ -28,11 +28,17 @@ class UserContext:
     def latestTime(self):
         return self.__latestTime
 
-    def update(self, contactTime, message, source):
+    def update(self, contactTime, message, source, edited=False):
         if (source == "user") and (contactTime - self.__latestTime > self.wait_time) :
             self.__init__(contactTime)
         else:
             self.__latestTime = contactTime
+
+        if edited:
+            for _ in range(len(self.__messageList)-1):
+                tmp = self.__messageList.pop()
+                if tmp['role']=="user":
+                    break
 
         self.__messageList.append({"role": source, "content": message})
 
@@ -48,7 +54,7 @@ class MessageManager:
         self.__init_usage_table("chat")
         self.__init_usage_table("dalle")
 
-    def get_response(self, chatid, userid, message):
+    def get_response(self, chatid, userid, message, edited):
         """
             chatid 用于追踪上下文
             userid 用于记录使用情况
@@ -57,10 +63,11 @@ class MessageManager:
         if chatid not in self.userDict:
             self.userDict[chatid] = UserContext(t)
 
-        self.userDict[chatid].update(t, message, "user")
+        self.userDict[chatid].update(t, message, "user", edited)
         answer,tokenum = self.openai_parser.get_response(self.userDict[chatid].messageList,self.userDict[chatid].model)
         self.userDict[chatid].update(t, answer, "assistant")
 
+        # 记录数据库
         try:
             self.__update_usage(userid,tokenum,1,"chat") # 1 是使用次数
         except:
