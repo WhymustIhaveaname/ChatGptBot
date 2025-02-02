@@ -270,7 +270,9 @@ class TelegramMessageParser:
     async def notify_users(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         #msg = "增加了一个 /gpt4 命令，可以使当前对话暂时使用 GPT4, 否则默认是 GPT3.5, 因为 4 太慢了。"
         #msg = "将默认模型设置为 gpt-4o，/gpt4 命令会指向 gpt-4-turbo。closeAI 号称 gpt-4o 的速度是 gpt-4-turbo 的 2 倍，同时其语境长度达到了 128000 字。"
-        msg = "刚刚增加了对编辑消息的响应，如果您觉得刚刚它的回答不满意，可以编辑最近的一条消息让它重新回答。注意：请编辑10min内的最后一条用户消息，否则会出现奇怪的行为。图像生成切换到了 dalle3，您可以试试 /dalle 画一个油画风格的风景画"
+        #msg = "刚刚增加了对编辑消息的响应，如果您觉得刚刚它的回答不满意，可以编辑最近的一条消息让它重新回答。注意：请编辑10min内的最后一条用户消息，否则会出现奇怪的行为。图像生成切换到了 dalle3，您可以试试 /dalle 画一个油画风格的风景画"
+        #msg = "下午机器人被超高的需求打崩了, 现已恢复, 请大家尽兴!"
+        msg = "抱歉机器人崩溃已经有两周了，最近在忙着整理文章和找工作：\nPhase Transitions in Large Language Models and the $O(N)$ Model https://arxiv.org/abs/2501.16241\nJailbreaking LLMs’ Safeguard with Universal Magic Words for Text Embedding Models https://arxiv.org/abs/2501.18280\n现在已经修复，祝大家玩儿得开心！"
         with open("config.json") as f:
             config_dict = json.load(f)
 
