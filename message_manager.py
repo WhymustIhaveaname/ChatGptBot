@@ -65,9 +65,11 @@ class MessageManager:
         if chatid not in self.userDict:
             self.userDict[chatid] = UserContext(t)
 
-        self.userDict[chatid].update(t, message, "user", edited)
-        answer,tokenum = self.openai_parser.get_response(self.userDict[chatid].messageList,self.userDict[chatid].model)
-        self.userDict[chatid].update(t, answer, "assistant")
+        user_context = self.userDict[chatid]
+
+        user_context.update(t, message, "user", edited)
+        answer,tokenum = self.openai_parser.get_response(user_context.messageList,user_context.model)
+        user_context.update(t, answer, "assistant")
 
         # 记录数据库
         try:

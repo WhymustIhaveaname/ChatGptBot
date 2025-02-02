@@ -274,7 +274,8 @@ class TelegramMessageParser:
         #msg = "刚刚增加了对编辑消息的响应，如果您觉得刚刚它的回答不满意，可以编辑最近的一条消息让它重新回答。注意：请编辑10min内的最后一条用户消息，否则会出现奇怪的行为。图像生成切换到了 dalle3，您可以试试 /dalle 画一个油画风格的风景画"
         #msg = "下午机器人被超高的需求打崩了, 现已恢复, 请大家尽兴!"
         # msg = "抱歉机器人崩溃已经有两周了，最近在忙着整理文章和找工作：\nPhase Transitions in Large Language Models and the $O(N)$ Model https://arxiv.org/abs/2501.16241\nJailbreaking LLMs’ Safeguard with Universal Magic Words for Text Embedding Models https://arxiv.org/abs/2501.18280\n现在已经修复，祝大家玩儿得开心！"
-        msg = "更新：\n1. 将默认模型改为了 gpt-4o-mini, 进阶模型改为了 o3-mini\n2. 将原先的 /gpt4 命令改为了 /pro, 使用方法同 /gpt4"
+        # msg = "更新：\n1. 将默认模型改为了 gpt-4o-mini, 进阶模型改为了 o3-mini\n2. 将原先的 /gpt4 命令改为了 /pro, 使用方法同 /gpt4"
+        msg = "忘记和大家说了, o3 属于自带 CoT (chain of thought) 的模型, 所以在提示词工程时, 不必使用 Cot 比如 '请仔细想想', 'Let's think step by step', 'explain what you are thinking' 等, 这不但会延长回答时间， 有时甚至会降低回答质量。"
         with open("config.json") as f:
             config_dict = json.load(f)
 
