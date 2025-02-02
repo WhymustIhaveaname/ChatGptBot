@@ -12,9 +12,30 @@ __email__ = contact@flynmail.com
 __status__ = Dev
 """
 
-import openai, json, os
-import datetime, time
+import openai, json
+import time
 from utils import log
+
+
+tokenlimits = {
+    'gpt-4': 8192,
+    'gpt-4-turbo': 128000,
+    'gpt-4o': 128000,
+    'gpt-4o-mini': 128000,
+    'o1': 200000,
+    'o1-mini': 128000,
+    'o3-mini': 200000,
+}
+
+prices = {
+    'gpt-4': (30,60),
+    'gpt-4-turbo': (10,30), # old model, should not be used
+    'gpt-4o': (2.5,10),
+    'gpt-4o-mini': (0.15,0.6),
+    'o1': (15,60),
+    'o1-mini': (1.1, 4.4),
+    'o3-mini': (1.1, 4.4),
+}
 
 class OpenAIParser:
     def __init__(self,):
@@ -26,14 +47,7 @@ class OpenAIParser:
     def get_response(self, context_messages, model):
         "return message and number of tokens used"
 
-        if model.startswith('gpt-4o'):
-            tokenlimit = 128000//2
-        elif model.startswith('gpt-4-turbo'):
-            tokenlimit = 128000//2
-        elif model.startswith('gpt-4'):
-            tokenlimit = 8192
-        else:
-            tokenlimit = 4097
+        tokenlimit = tokenlimits.get(model,4096)
 
         token_num = len(str(context_messages))
         if token_num>tokenlimit:
@@ -48,10 +62,8 @@ class OpenAIParser:
                 msg  += "\nFinish because %s"%(freason)
 
             # the metric is $/M now
-            if model.startswith('gpt-4o'):
-                token_num = response["usage"]["prompt_tokens"]*5 + response["usage"]["completion_tokens"]*15
-            else:
-                token_num = response["usage"]["prompt_tokens"]*10 + response["usage"]["completion_tokens"]*30
+            prompt_price, completion_price = prices.get(model, (1,2))
+            token_num = response["usage"]["prompt_tokens"]*prompt_price + response["usage"]["completion_tokens"]*completion_price
 
             return msg,token_num
         except Exception as e:
@@ -67,29 +79,13 @@ class OpenAIParser:
         image_url = response["data"][0]["url"]
         return image_url
 
-def test_lantency():
-    context_messages = []
-    context_messages.append({'role': 'system', 'content': '''
-You will be asked a series of questions about Python.
-Please try your best to be helpful.'''})
-    questions = ["""
-1. 如何在一个函数内部修改全局变量
-2. 列出5个python标准库
-3. 字典如何删除键和合并两个字典
-4. 谈下python的GIL
-5. python实现列表去重的方法"""]
-    for i,q in enumerate(questions):
-        context_messages.append({'role': 'user', 'content': '%d: %s'%(i,q)})
-    openai_parser = OpenAIParser()
-    for model in ['gpt-3.5-turbo-0301','gpt-3.5-turbo','gpt-4-0314','gpt-4']:
-        log("testing %s"%(model))
-        tik = time.time()
-        msg,token_num = openai_parser.get_response(context_messages,model)
-        tok = time.time()
-        log("msg: %s"%(msg))
-        log('time of %s: %.2fs, %.2fms'%(model,tok-tik,1000*(tok-tik)/token_num))
-
 if __name__ == "__main__":
-    # openai_parser = OpenAIParser()
-    # print(openai_parser.get_response([{"role": "user", "content": "Tell me a joke."}]))
-    test_lantency()
+    openai_parser = OpenAIParser()
+    for model, _ in prices.items():
+        print("testing %s"%(model))
+        tik = time.time()
+        msg,token_num = openai_parser.get_response([{"role": "user", "content": "Tell me a joke."}],model)
+        tok = time.time()
+        log("msg: %s\ntoken_num: %d"%(msg,token_num))
+        log('time of %s: %.2fms'%(model,1000*(tok-tik)))
+    # test_lantency()
